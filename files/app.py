@@ -811,8 +811,7 @@ def main():
                             f"padding:4px 8px;text-align:center;font-size:10px;font-weight:600;"
                             f"-webkit-text-fill-color:{col};cursor:pointer'>{wopt}</div>",
                             unsafe_allow_html=True)
-                        if st.button(wopt, key=f"wpill_{yr}_{mo}_{wi}", use_container_width=True,
-                                     label_visibility="collapsed"):
+                        if st.button(wopt, key=f"wpill_{yr}_{mo}_{wi}", use_container_width=True):
                             st.session_state[sel_week_key] = wopt
                             st.rerun()
 
@@ -861,8 +860,7 @@ def main():
                             f"text-align:center;font-size:11px;font-weight:700;"
                             f"-webkit-text-fill-color:{col_g}'>{g}</div>",
                             unsafe_allow_html=True)
-                        if st.button(g, key=f"gf_{yr}_{mo}_{g}", use_container_width=True,
-                                     label_visibility="collapsed"):
+                        if st.button(g, key=f"gf_{yr}_{mo}_{g}", use_container_width=True):
                             st.session_state[grade_key] = g
                             st.rerun()
 
