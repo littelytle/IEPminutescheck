@@ -467,7 +467,7 @@ def render_goal_chart(logs_df, students_df, year, month):
 # ══════════════════════════════════════════════════════════════════════════════
 # STUDENT CARD  (subject controlled globally, shows M/E/T check badges)
 # ══════════════════════════════════════════════════════════════════════════════
-def render_student_card(student, logs_df, staff_df, db, active_subj, view_start, view_end):
+def render_student_card(student, logs_df, staff_df, db, active_subj, view_start, view_end, key_pfx=""):
     sid   = student["id"]
     name  = str(student["name"])
     grade = str(student["grade"])
@@ -520,7 +520,7 @@ def render_student_card(student, logs_df, staff_df, db, active_subj, view_start,
             f"</div>",
             unsafe_allow_html=True)
     with col_del:
-        if st.button("×", key=f"del_{sid}", help="Remove student"):
+        if st.button("×", key=f"del_{key_pfx}_{sid}", help="Remove student"):
             db.delete_student(sid)
             refresh()
 
@@ -544,9 +544,9 @@ def render_student_card(student, logs_df, staff_df, db, active_subj, view_start,
 
     # Edit + Notes
     with st.expander("⚙ Edit Goal / Name"):
-        nn = st.text_input("Name", value=name, key=f"ename_{sid}")
-        ng = st.number_input(f"{active_subj} goal (min/wk)", value=goal, min_value=1, key=f"egoal_{sid}")
-        if st.button("Save", key=f"esave_{sid}"):
+        nn = st.text_input("Name", value=name, key=f"ename_{key_pfx}_{sid}")
+        ng = st.number_input(f"{active_subj} goal (min/wk)", value=goal, min_value=1, key=f"egoal_{key_pfx}_{sid}")
+        if st.button("Save", key=f"esave_{key_pfx}_{sid}"):
             db.update_student(sid, nn, {active_subj: int(ng)})
             refresh()
 
@@ -886,7 +886,8 @@ def main():
                                     with rcols[ci]:
                                         render_student_card(
                                             student, logs_df, staff_df, db,
-                                            subj, view_start, view_end)
+                                            subj, view_start, view_end,
+                                            key_pfx=f"{subj}_{yr}_{mo}")
 
     # ══════════════════════════════════════════════════════════════════════════
     # LOG SESSION
