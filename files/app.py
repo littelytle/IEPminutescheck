@@ -414,7 +414,7 @@ def render_student_card(student: pd.Series, logs_df: pd.DataFrame,
                 unsafe_allow_html=True,
             )
             if st.button(label, key=f"subj_{sid}_{subj}",
-                         use_container_width=True, label_visibility="collapsed"):
+                         use_container_width=True):
                 db.update_student_subject(sid, subj)
                 refresh()
 
