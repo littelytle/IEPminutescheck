@@ -1,6 +1,6 @@
 """
 IEP Minute Pro — Streamlit App
-Full Logic Restored | Fixed Session State Error | Refined UI Hierarchy
+Full Logic Preserved | Fixed Duplicate Form Keys | Refined UI Hierarchy
 """
 
 import streamlit as st
@@ -32,7 +32,7 @@ DEFAULT_STAFF = [
     {"id":5,"name":"Ms. Patel",   "color":"#ec4899"},
 ]
 
-# ── CALLBACKS (Fixes the Session State Error) ──────────────────────────────────
+# ── CALLBACKS ──────────────────────────────────────────────────────────────────
 def cb_select_all(ids):
     for sid in ids:
         st.session_state[f"ls_stu_{sid}"] = True
@@ -40,12 +40,6 @@ def cb_select_all(ids):
 def cb_select_none(ids):
     for sid in ids:
         st.session_state[f"ls_stu_{sid}"] = False
-
-def cb_clear_log_selection(ids):
-    for sid in ids:
-        st.session_state[f"ls_stu_{sid}"] = False
-    # Clear other form fields if needed
-    st.session_state["ls_note"] = ""
 
 # ── DB ────────────────────────────────────────────────────────────────────────
 class SheetsDB:
@@ -453,7 +447,7 @@ def render_student_card(student, pivot, logs_df, staff_df, db,
         
         # History Expander (Collapsed by default)
         if len(student_notes) > 1:
-            with st.expander("History"):
+            with st.expander("History", key=f"hist_{key_pfx}_{sid}"):
                 for _, row in student_notes.iloc[1:].iterrows():
                     st.markdown(f"**{row['date'].strftime('%b %d')}**: {row['note']} ({row['staff']})")
     else:
@@ -466,9 +460,10 @@ def render_student_card(student, pivot, logs_df, staff_df, db,
             st.session_state[f"editing_{sid}"] = not st.session_state.get(f"editing_{sid}", False)
     
     if st.session_state.get(f"editing_{sid}"):
-        with st.form(f"edit_form_{sid}"):
-            nn = st.text_input("Name", value=name)
-            ng = st.number_input(f"{active_subj} Goal", value=goal)
+        # Fixed: Unique form key using key_pfx to prevent StreamlitAPIException
+        with st.form(f"edit_form_{key_pfx}_{sid}"):
+            nn = st.text_input("Name", value=name, key=f"nn_{key_pfx}_{sid}")
+            ng = st.number_input(f"{active_subj} Goal", value=goal, key=f"ng_{key_pfx}_{sid}")
             c1, c2 = st.columns(2)
             if c1.form_submit_button("Save"):
                 db.update_student(sid, nn, {active_subj: int(ng)})
@@ -570,7 +565,7 @@ def render_log_session(db, students_df, staff_df, logs_df):
                     "Logged " + str(int(mins_val)) + "m of " + subj_sel +
                     " for: " + ", ".join(names))
                 st.session_state["log_success_clear"] = False
-                # Clear selection using callback-like logic before refresh
+                # Clear selection manually before refresh
                 for sid in selected_ids:
                     st.session_state["ls_stu_" + str(sid)] = False
                 refresh()
