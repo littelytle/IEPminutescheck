@@ -1,9 +1,3 @@
-="""
-IEP Minute Pro — Streamlit App
-Optimized: pivot-based calculations, only active month rendered.
-UI Refined: High-hierarchy student cards & decluttered dashboard.
-"""
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
