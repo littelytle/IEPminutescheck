@@ -236,6 +236,7 @@ div[data-testid="stForm"]{background:white!important;border:1px solid #e5e7eb!im
 input,select,textarea{font-family:'Inter',sans-serif!important;font-size:14px!important;color:#111827!important;-webkit-text-fill-color:#111827!important}
 @media(max-width:768px){.stTabs [data-baseweb="tab"]{font-size:11px!important;padding:8px 8px!important}.block-container{padding:8px 10px!important}}
 #MainMenu{visibility:hidden}footer{visibility:hidden}header{visibility:hidden}
+
 .log-success{background:#d1fae5;border:1px solid #10b981;border-radius:8px;padding:12px 16px;color:#065f46;font-weight:600;font-size:14px;margin-bottom:10px}
 </style>""", unsafe_allow_html=True)
 
@@ -363,75 +364,106 @@ def render_student_card(student, pivot, logs_df, staff_df, db,
     by_staff  = pivot_staff_breakdown(pivot, sid, active_subj, view_start, view_end, staff_names)
     total_min = sum(by_staff.values())
     goal_met  = total_min >= goal
+    pct       = min(int(total_min / goal * 100), 100) if goal > 0 else 0
+    subj_col  = SUBJ_COLOR[active_subj]
 
-    # M/E/T badges
-    badges_html = ""
+    # M/E/T completion dots (small, secondary)
+    dots_html = ""
     for subj in SUBJECTS:
         short = SUBJ_SHORT[subj]
         color = SUBJ_COLOR[subj]
         g     = safe_goal(student, subj)
         m     = pivot_minutes(pivot, sid, subj, view_start, view_end)
         done  = m >= g
-        if done:
-            badges_html += (
-                "<span style='display:inline-flex;align-items:center;justify-content:center;"
-                "width:20px;height:20px;border-radius:50%;background:" + color + ";"
-                "color:white;font-size:9px;font-weight:800;margin-left:2px'"
-                " title='" + subj + ": " + str(m) + "m/" + str(g) + "m'>" + short + "</span>"
+        bg    = color if done else "#e5e7eb"
+        tc    = "white" if done else "#9ca3af"
+        dots_html += (
+            "<span style='display:inline-flex;align-items:center;justify-content:center;"
+            "width:16px;height:16px;border-radius:50%;background:" + bg + ";"
+            "color:" + tc + ";font-size:8px;font-weight:800'"
+            " title='" + subj + ": " + str(m) + "m / " + str(g) + "m'>" + short + "</span>"
+        )
+
+    # Progress arc color
+    arc_color = "#10b981" if goal_met else subj_col
+
+    # Build the whole card as one HTML block for tight control
+    # Top: colored left border strip = active subject color
+    card_html = (
+        "<div style='background:white;border:1px solid #e5e7eb;border-radius:10px;"
+        "border-left:4px solid " + subj_col + ";padding:12px 14px 10px 14px;margin-bottom:10px'>"
+
+        # Row 1: grade badge + subject dots + delete button placeholder area
+        "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>"
+        "<div style='display:flex;align-items:center;gap:6px'>"
+        "<span style='background:" + gc + "22;color:" + gc + ";font-size:10px;font-weight:700;"
+        "border-radius:4px;padding:1px 7px'>" + grade + "</span>"
+        "<span style='display:inline-flex;gap:3px'>" + dots_html + "</span>"
+        "</div>"
+        "</div>"
+
+        # Row 2: BIG name
+        "<div style='font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;"
+        "line-height:1.1;margin-bottom:8px'>" + name + "</div>"
+
+        # Row 3: LARGE minutes number + goal
+        "<div style='display:flex;align-items:baseline;gap:6px;margin-bottom:8px'>"
+        "<span style='font-size:32px;font-weight:800;color:" + arc_color + ";line-height:1'>"
+        + str(total_min) + "</span>"
+        "<span style='font-size:13px;color:#9ca3af;font-weight:500'>min</span>"
+        "<span style='font-size:12px;color:#9ca3af;margin-left:2px'>/ " + str(goal) + "m goal</span>"
+        + (" <span style='font-size:13px'>✓</span>" if goal_met else "") +
+        "</div>"
+
+        # Row 4: segmented progress bar
+        "<div style='background:#f3f4f6;border-radius:5px;height:6px;overflow:hidden;"
+        "display:flex;margin-bottom:6px'>"
+    )
+
+    for _, r in staff_df.iterrows():
+        m = by_staff.get(r["name"], 0)
+        if m > 0 and goal > 0:
+            seg_pct = min(m / goal * 100, 100)
+            card_html += (
+                "<div title='" + r["name"] + ": " + str(m) + "m' style='width:" +
+                str(round(seg_pct, 1)) + "%;background:" + r["color"] +
+                ";height:100%'></div>"
             )
-        else:
-            badges_html += (
-                "<span style='display:inline-flex;align-items:center;justify-content:center;"
-                "width:20px;height:20px;border-radius:50%;background:#f3f4f6;"
-                "color:#9ca3af;font-size:9px;font-weight:700;border:1px solid #e5e7eb;"
-                "margin-left:2px' title='" + subj + ": " + str(m) + "m/" + str(g) + "m'>"
-                + short + "</span>"
-            )
 
-    st.markdown(
-        "<div style='height:3px;background:" + SUBJ_COLOR[active_subj] +
-        ";border-radius:3px 3px 0 0'></div>", unsafe_allow_html=True)
+    card_html += "</div>"  # close bar
 
-    col_name, col_del = st.columns([6,1])
-    with col_name:
-        st.markdown(
-            "<div style='display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:2px 0'>"
-            "<span style='background:" + gc + "18;color:" + gc + ";font-size:10px;font-weight:700;"
-            "border-radius:4px;padding:2px 6px;white-space:nowrap'>" + grade + "</span>"
-            "<b style='font-size:13px;color:#111827'>" + name + "</b>"
-            "<span style='display:inline-flex;gap:2px;align-items:center'>" + badges_html + "</span>"
-            "</div>", unsafe_allow_html=True)
-    with col_del:
-        if st.button("x", key="del_" + key_pfx + "_" + str(sid), help="Remove student"):
-            db.delete_student(sid)
-            refresh()
-
-    st.markdown(progress_bar_html(by_staff, staff_df, goal), unsafe_allow_html=True)
-
-    # Staff chips
+    # Row 5: staff chips (last name + minutes, only if they have any)
     chips = ""
     for _, s in staff_df.iterrows():
         m = by_staff.get(s["name"], 0)
         if m > 0:
-            s_color = s["color"]
-            s_last  = s["name"].split()[-1]
             chips += (
                 "<span style='display:inline-flex;align-items:center;gap:3px;"
                 "background:#f4f5f7;border:1px solid #e5e7eb;border-radius:4px;"
-                "padding:2px 6px;font-size:9px;color:#4b5563;margin:2px'>"
+                "padding:2px 6px;font-size:9px;color:#6b7280;margin-right:3px'>"
                 "<span style='width:5px;height:5px;border-radius:50%;background:" +
-                s_color + ";display:inline-block'></span>" +
-                s_last + ": " + str(m) + "m</span>"
+                s["color"] + ";display:inline-block'></span>" +
+                s["name"].split()[-1] + ": " + str(m) + "m</span>"
             )
     if chips:
-        st.markdown(chips, unsafe_allow_html=True)
+        card_html += "<div style='margin-top:2px'>" + chips + "</div>"
 
-    with st.expander("Edit Goal / Name"):
-        nn = st.text_input("Name", value=name, key="ename_" + key_pfx + "_" + str(sid))
-        ng = st.number_input(active_subj + " goal (min/wk)", value=goal, min_value=1,
-                             key="egoal_" + key_pfx + "_" + str(sid))
-        if st.button("Save", key="esave_" + key_pfx + "_" + str(sid)):
-            db.update_student(sid, nn, {active_subj: int(ng)})
+    card_html += "</div>"  # close card
+    st.markdown(card_html, unsafe_allow_html=True)
+
+    # Edit + Notes below card (expanders outside the HTML block)
+    col_edit, col_del = st.columns([5, 1])
+    with col_edit:
+        with st.expander("Edit"):
+            nn = st.text_input("Name", value=name, key="ename_" + key_pfx + "_" + str(sid))
+            ng = st.number_input(active_subj + " goal (min/wk)", value=goal, min_value=1,
+                                 key="egoal_" + key_pfx + "_" + str(sid))
+            if st.button("Save", key="esave_" + key_pfx + "_" + str(sid)):
+                db.update_student(sid, nn, {active_subj: int(ng)})
+                refresh()
+    with col_del:
+        if st.button("Del", key="del_" + key_pfx + "_" + str(sid), help="Remove student"):
+            db.delete_student(sid)
             refresh()
 
     with st.expander("Notes"):
@@ -453,16 +485,18 @@ def render_student_card(student, pivot, logs_df, staff_df, db,
                     dstr  = str(nr["date"])[5:]
                     note  = str(nr["note"])
                     st.markdown(
-                        "<div style='background:#f4f5f7;border:1px solid #e5e7eb;"
-                        "border-radius:7px;padding:7px 10px;margin-bottom:5px'>"
-                        "<div style='display:flex;justify-content:space-between;margin-bottom:3px'>"
+                        "<div style='background:#f8f9fa;border:1px solid #e5e7eb;"
+                        "border-radius:6px;padding:7px 10px;margin-bottom:4px'>"
+                        "<div style='display:flex;justify-content:space-between;margin-bottom:2px'>"
                         "<span style='font-size:10px;color:#4b5563'>"
-                        "<span style='display:inline-block;width:5px;height:5px;border-radius:50%;"
-                        "background:" + color + ";margin-right:4px'></span>" + lname + "</span>"
+                        "<span style='width:5px;height:5px;border-radius:50%;background:" +
+                        color + ";display:inline-block;margin-right:4px'></span>" +
+                        lname + "</span>"
                         "<span style='font-size:10px;color:#9ca3af'>" + dstr + "</span>"
-                        "</div><p style='font-size:11px;color:#4b5563;margin:0'>" + note + "</p></div>",
+                        "</div>"
+                        "<p style='font-size:11px;color:#4b5563;margin:0'>" + note + "</p>"
+                        "</div>",
                         unsafe_allow_html=True)
-    st.markdown("---")
 
 
 # ── ADD STUDENT ───────────────────────────────────────────────────────────────
@@ -658,8 +692,6 @@ def main():
                     st.session_state["active_month_idx"] = mi
                     st.rerun()
 
-        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-
         # ── Render only the active month ──────────────────────────────────────
         ami       = st.session_state["active_month_idx"]
         yr, mo, _ = month_tabs[ami]
@@ -671,11 +703,7 @@ def main():
         if sel_week_key not in st.session_state:
             st.session_state[sel_week_key] = "Whole Month"
 
-        # Week pills
-        st.markdown(
-            "<p style='font-size:11px;font-weight:600;color:#9ca3af;"
-            "text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px'>WEEKS</p>",
-            unsafe_allow_html=True)
+        # Week pills (no separate header label — pills are self-explanatory)
         pill_cols = st.columns(len(week_options))
         for wi, wopt in enumerate(week_options):
             with pill_cols[wi]:
@@ -713,8 +741,7 @@ def main():
         with st.container(border=True):
             render_goal_chart(pivot, students_df, yr, mo)
 
-        st.markdown("---")
-        st.markdown("### Individual Student Progress")
+            st.markdown("### Individual Student Progress")
 
         # Grade filter
         grade_key = "grade_filter_" + str(yr) + "_" + str(mo)
