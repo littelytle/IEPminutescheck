@@ -566,6 +566,14 @@ def render_log_session(db, students_df, staff_df, logs_df):
                     if st.button("Select None", key="ls_none"):
                         for _, s in gs.iterrows():
                             st.session_state["ls_stu_" + str(s["id"])] = False
+                # Reset checkboxes after a successful log
+                if st.session_state.get("ls_reset_grade") == grade_sel:
+                    for _, s in gs.iterrows():
+                        key = "ls_stu_" + str(s["id"])
+                        if key in st.session_state:
+                            del st.session_state[key]
+                    st.session_state["ls_reset_grade"] = None
+
                 for _, stu in gs.iterrows():
                     if st.checkbox(stu["name"], key="ls_stu_" + str(stu["id"])):
                         selected_ids.append(stu["id"])
@@ -590,8 +598,8 @@ def render_log_session(db, students_df, staff_df, logs_df):
                     "Logged " + str(int(mins_val)) + "m of " + subj_sel +
                     " for: " + ", ".join(names))
                 st.session_state["log_success_clear"] = False
-                for sid in selected_ids:
-                    st.session_state["ls_stu_" + str(sid)] = False
+                # Flag to reset checkboxes on next render — can't set widget keys directly
+                st.session_state["ls_reset_grade"] = grade_sel
                 refresh()
 
     with col_recent:
