@@ -1,6 +1,6 @@
 """
-IEP Minute Pro — Streamlit App (Redesigned UI)
-Matches the React "Crafted" Aesthetic
+IEP Minute Pro — Streamlit App (Restored & Refined)
+Full functionality restored with "Crafted" UI hierarchy.
 """
 
 import streamlit as st
@@ -12,14 +12,8 @@ from gspread.exceptions import WorksheetNotFound
 from google.oauth2.service_account import Credentials
 
 # --- CONFIGURATION ---
-st.set_page_config(
-    page_title="IEP Minute Pro", 
-    page_icon="📋",
-    layout="wide", 
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="IEP Minute Pro", page_icon="📋", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CONSTANTS ---
 SUBJECTS = ["Math", "English", "Task Completion"]
 GRADES = ["6th", "7th", "8th"]
 SCHOOL_MONTHS = [(8,"Aug"),(9,"Sep"),(10,"Oct"),(11,"Nov"),(12,"Dec"),
@@ -35,322 +29,267 @@ def inject_css():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    
-    /* Global Styles */
     html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
     .stApp { background-color: #f8fafc !important; }
     
-    /* Custom Header */
-    .app-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 0;
-        margin-bottom: 2rem;
-        border-bottom: 1px solid #e2e8f0;
-    }
-    .logo-container {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .logo-icon {
-        width: 36px;
-        height: 36px;
-        background: #4f46e5;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 900;
-        font-size: 1.25rem;
-        box-shadow: 0 4px 6px -1px rgb(79 70 229 / 0.2);
-    }
-    .logo-text {
-        font-size: 1.25rem;
-        font-weight: 900;
-        color: #1e293b;
-        letter-spacing: -0.025em;
-        text-transform: uppercase;
-    }
-
-    /* Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: transparent !important;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 40px;
-        white-space: pre;
-        background-color: #fff !important;
-        border-radius: 8px !important;
-        border: 1px solid #e2e8f0 !important;
-        color: #64748b !important;
-        font-weight: 600 !important;
-        padding: 0 16px !important;
-        transition: all 0.2s ease;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #4f46e5 !important;
-        color: white !important;
-        border-color: #4f46e5 !important;
-        box-shadow: 0 4px 6px -1px rgb(79 70 229 / 0.2);
-    }
-
-    /* Card Styling */
+    /* Student Card Hierarchy */
     .student-card {
         background: white;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
-        padding: 1.25rem;
+        padding: 1.5rem;
         margin-bottom: 1rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
     }
-    .student-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);
+    .student-name {
+        font-size: 1.75rem !important;
+        font-weight: 900 !important;
+        color: #0f172a !important;
+        letter-spacing: -0.04em !important;
+        line-height: 1 !important;
     }
+    .student-minutes {
+        font-size: 1.75rem !important;
+        font-weight: 400 !important;
+        color: #64748b !important;
+        letter-spacing: -0.04em !important;
+    }
+    .student-minutes b { color: #0f172a !important; font-weight: 900 !important; }
 
     /* Progress Bar */
-    .progress-container {
-        background: #f1f5f9;
-        border-radius: 999px;
-        height: 8px;
-        overflow: hidden;
-        margin: 12px 0 6px 0;
-    }
-    .progress-fill {
-        height: 100%;
-        border-radius: 999px;
-        transition: width 0.5s ease-out;
-    }
+    .progress-container { background: #f1f5f9; border-radius: 999px; height: 12px; overflow: hidden; margin: 1rem 0; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-    /* Metric Styling */
-    .metric-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        text-align: center;
+    /* Note Styling */
+    .latest-note {
+        background: #f8fafc;
+        border-left: 3px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        border-radius: 0 8px 8px 0;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        color: #475569;
     }
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #1e293b;
-    }
-    .metric-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
+    .note-meta { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
 
-    /* Form Overrides */
-    div[data-testid="stForm"] {
-        border: none !important;
-        background: white !important;
-        padding: 2rem !important;
-        border-radius: 20px !important;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
-        border: 1px solid #e2e8f0 !important;
-    }
+    /* Form Styling */
+    div[data-testid="stForm"] { background: white !important; border: 1px solid #e2e8f0 !important; border-radius: 16px !important; padding: 2rem !important; }
     
-    /* Button Polish */
-    .stButton>button {
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        padding: 0.5rem 1.5rem !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    /* Hide Streamlit Branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Hide Redundant Labels */
+    div[data-testid="stMarkdownContainer"] > p { margin-bottom: 0 !important; }
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- DATABASE LOGIC (Kept from your original) ---
-class SheetsDB:
-    def __init__(self):
-        try:
-            creds = Credentials.from_service_account_info(
-                dict(st.secrets["gcp_service_account"]), scopes=SCOPES)
+# --- DATABASE LOGIC (Restored from Original) ---
+@st.cache_resource
+def get_db():
+    class SheetsDB:
+        def __init__(self):
+            creds = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=SCOPES)
             self.client = gspread.authorize(creds)
             self.spreadsheet = self.client.open_by_key(st.secrets["spreadsheet_id"])
-            self._ensure_sheets()
-        except Exception as e:
-            st.error(f"Database Connection Error: {e}")
-            st.stop()
+            self.staff_ws = self.spreadsheet.worksheet("staff")
+            self.students_ws = self.spreadsheet.worksheet("students")
+            self.logs_ws = self.spreadsheet.worksheet("logs")
 
-    def _get_or_create_sheet(self, title, headers):
-        try:
-            return self.spreadsheet.worksheet(title)
-        except WorksheetNotFound:
-            ws = self.spreadsheet.add_worksheet(title=title, rows=1000, cols=len(headers))
-            ws.append_row(headers)
-            return ws
+        def get_staff(self): return pd.DataFrame(self.staff_ws.get_all_records())
+        def get_students(self): 
+            df = pd.DataFrame(self.students_ws.get_all_records())
+            if not df.empty: df["id"] = df["id"].astype(int)
+            return df
+        def get_logs(self):
+            df = pd.DataFrame(self.logs_ws.get_all_records())
+            if not df.empty:
+                df["student_id"] = pd.to_numeric(df["student_id"], errors="coerce").astype("Int64")
+                df["minutes"] = pd.to_numeric(df["minutes"], errors="coerce").fillna(0).astype(int)
+                df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+            return df
+        
+        def add_student(self, name, grade, goals):
+            recs = self.students_ws.get_all_records()
+            new_id = max((int(r["id"]) for r in recs), default=0) + 1
+            self.students_ws.append_row([new_id, name, grade, "Math", goals.get("Math",60), goals.get("English",90), goals.get("Task Completion",45)])
 
-    def _ensure_sheets(self):
-        self.staff_ws = self._get_or_create_sheet("staff", ["id","name","color"])
-        self.students_ws = self._get_or_create_sheet("students", ["id","name","grade","active_subject","goal_math","goal_english","goal_task_completion"])
-        self.logs_ws = self._get_or_create_sheet("logs", ["id","student_id","subject","staff","minutes","date","note"])
+        def add_log(self, sid, subj, staff, mins, dt, note):
+            recs = self.logs_ws.get_all_records()
+            new_id = max((int(r["id"]) for r in recs), default=0) + 1
+            self.logs_ws.append_row([new_id, int(sid), subj, staff, int(mins), str(dt), note])
 
-    def get_staff(self):
-        recs = self.staff_ws.get_all_records()
-        return pd.DataFrame(recs) if recs else pd.DataFrame(columns=["id","name","color"])
+        def update_student(self, sid, name, goals):
+            recs = self.students_ws.get_all_records()
+            for i, r in enumerate(recs):
+                if int(r["id"]) == int(sid):
+                    row = i + 2
+                    if name: self.students_ws.update_cell(row, 2, name)
+                    if goals:
+                        for s, v in goals.items():
+                            col = 5 if s == "Math" else 6 if s == "English" else 7
+                            self.students_ws.update_cell(row, col, v)
+                    break
 
-    def get_students(self):
-        recs = self.students_ws.get_all_records()
-        df = pd.DataFrame(recs) if recs else pd.DataFrame()
-        if not df.empty:
-            df["id"] = df["id"].astype(int)
-            for col in ["goal_math","goal_english","goal_task_completion"]:
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(60).astype(int)
-        return df
+        def delete_student(self, sid):
+            recs = self.students_ws.get_all_records()
+            for i, r in enumerate(recs):
+                if int(r["id"]) == int(sid):
+                    self.students_ws.delete_rows(i+2)
+                    break
+    return SheetsDB()
 
-    def get_logs(self):
-        recs = self.logs_ws.get_all_records()
-        df = pd.DataFrame(recs) if recs else pd.DataFrame()
-        if not df.empty:
-            df["student_id"] = pd.to_numeric(df["student_id"], errors="coerce").astype("Int64")
-            df["minutes"] = pd.to_numeric(df["minutes"], errors="coerce").fillna(0).astype(int)
-            df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
-        return df
+# --- HELPERS ---
+def school_year_for(d): return d.year if d.month >= 8 else d.year - 1
+def month_range(year, month):
+    first = date(year, month, 1)
+    last = date(year+1,1,1)-timedelta(1) if month==12 else date(year,month+1,1)-timedelta(1)
+    return first, last
+def month_weeks(year, month):
+    first = date(year, month, 1)
+    last = date(year+1,1,1)-timedelta(1) if month==12 else date(year,month+1,1)-timedelta(1)
+    weeks, cur = [], first - timedelta(days=first.weekday())
+    while cur <= last:
+        mon, fri = cur, cur+timedelta(4)
+        weeks.append((f"{mon.month}/{mon.day}–{fri.month}/{fri.day}", mon, mon+timedelta(6)))
+        cur += timedelta(7)
+    return weeks
 
-    def add_log(self, student_id, subject, staff, minutes, log_date, note=""):
-        recs = self.logs_ws.get_all_records()
-        new_id = max((int(r["id"]) for r in recs), default=0) + 1
-        self.logs_ws.append_row([new_id, int(student_id), subject, staff, int(minutes), str(log_date), note])
-
-# --- UI COMPONENTS ---
-def render_header():
-    st.markdown("""
-    <div class="app-header">
-        <div class="logo-container">
-            <div class="logo-icon">I</div>
-            <div class="logo-text">IEP Minute Pro</div>
-        </div>
-        <div style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
-            Logged in as Team Member
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-def progress_bar_html(current, goal, color):
-    percent = min(int((current / goal) * 100), 100) if goal > 0 else 0
-    return f"""
-    <div style="margin-top: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px;">
-            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">{current}m / {goal}m</span>
-            <span style="font-size: 0.875rem; color: #1e293b; font-weight: 800;">{percent}%</span>
-        </div>
-        <div class="progress-container">
-            <div class="progress-fill" style="width: {percent}%; background-color: {color};"></div>
-        </div>
-    </div>
-    """
-
-def render_student_card(student, logs_df, active_subj, start_date, end_date):
-    sid = student["id"]
-    name = student["name"]
-    grade = student["grade"]
-    goal = student[GOAL_COL.get(active_subj, "goal_math")]
-    
-    # Calculate minutes
-    mask = (logs_df["student_id"] == sid) & (logs_df["subject"] == active_subj) & \
-           (logs_df["date"] >= start_date) & (logs_df["date"] <= end_date)
-    current_mins = logs_df[mask]["minutes"].sum()
-    
+# --- STUDENT CARD ---
+def render_student_card(student, logs_df, active_subj, start, end, db):
+    sid, name = student["id"], student["name"]
+    goal = int(student[GOAL_COL.get(active_subj, "goal_math")])
+    mask = (logs_df["student_id"] == sid) & (logs_df["subject"] == active_subj) & (logs_df["date"] >= start) & (logs_df["date"] <= end)
+    current_mins = int(logs_df[mask]["minutes"].sum())
+    percent = min(int((current_mins / goal) * 100), 100) if goal > 0 else 0
     color = SUBJ_COLOR.get(active_subj, "#4f46e5")
-    
+
     st.markdown(f"""
     <div class="student-card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <div style="font-size: 0.65rem; font-weight: 800; color: {GRADE_COLOR.get(grade, '#64748b')}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">{grade} Grade</div>
-                <div style="font-size: 1.125rem; font-weight: 800; color: #1e293b; letter-spacing: -0.02em;">{name}</div>
-            </div>
-            <div style="background: {color}15; color: {color}; padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">
-                {active_subj.upper()}
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="student-name">{name}</div>
+            <div class="student-minutes"><b>{current_mins}</b> / {goal}m</div>
         </div>
-        {progress_bar_html(current_mins, goal, color)}
-    </div>
+        <div class="progress-container"><div class="progress-fill" style="width: {percent}%; background-color: {color};"></div></div>
     """, unsafe_allow_html=True)
 
-# --- MAIN APP ---
+    # Latest Note
+    notes = logs_df[(logs_df["student_id"] == sid) & (logs_df["note"] != "")].sort_values("date", ascending=False)
+    if not notes.empty:
+        latest = notes.iloc[0]
+        st.markdown(f"<div class='latest-note'><div class='note-meta'>{latest['date'].strftime('%b %d')} • {latest['staff']}</div>{latest['note']}</div>", unsafe_allow_html=True)
+        if len(notes) > 1:
+            with st.expander("History"):
+                for _, r in notes.iloc[1:].iterrows(): st.markdown(f"**{r['date'].strftime('%b %d')}**: {r['note']} ({r['staff']})")
+    else:
+        st.markdown("<div style='font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;'>No notes.</div>", unsafe_allow_html=True)
+
+    # Edit Pencil
+    if st.button("✏️", key=f"edit_{sid}"): st.session_state[f"ed_{sid}"] = not st.session_state.get(f"ed_{sid}", False)
+    if st.session_state.get(f"ed_{sid}"):
+        with st.form(f"f_{sid}"):
+            nn = st.text_input("Name", value=name)
+            ng = st.number_input(f"{active_subj} Goal", value=goal)
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Save"):
+                db.update_student(sid, nn, {active_subj: ng})
+                st.rerun()
+            if c2.form_submit_button("🗑️ Remove"):
+                db.delete_student(sid)
+                st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# --- MAIN ---
 def main():
     inject_css()
-    render_header()
-    
-    db = SheetsDB()
-    students_df = db.get_students()
-    logs_df = db.get_logs()
-    staff_df = db.get_staff()
-    
-    # Navigation
-    tabs = st.tabs(["📊 Dashboard", "✍️ Log Session", "➕ Add Student", "⚙️ Settings"])
-    
-    with tabs[0]:
-        # Dashboard Filters
-        col1, col2, col3 = st.columns([2, 2, 4])
-        with col1:
-            active_subj = st.selectbox("Subject Area", SUBJECTS)
-        with col2:
-            grade_filter = st.selectbox("Grade Level", ["All"] + GRADES)
-        
-        # Date Range (Current Week)
-        today = date.today()
-        start_of_week = today - timedelta(days=today.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
-        
-        st.markdown(f"### Service Minutes: {start_of_week.strftime('%b %d')} - {end_of_week.strftime('%b %d')}")
-        
-        # Filter Students
-        display_students = students_df
-        if grade_filter != "All":
-            display_students = display_students[display_students["grade"] == grade_filter]
-            
-        if display_students.empty:
-            st.info("No students found for this filter.")
-        else:
-            # Grid Layout
-            cols = st.columns(3)
-            for i, (_, student) in enumerate(display_students.iterrows()):
-                with cols[i % 3]:
-                    render_student_card(student, logs_df, active_subj, start_of_week, end_of_week)
+    db = get_db()
+    students_df, logs_df, staff_df = db.get_students(), db.get_logs(), db.get_staff()
 
-    with tabs[1]:
-        st.markdown("### Log Service Minutes")
-        with st.form("log_form", clear_on_submit=True):
+    st.markdown("<h1 style='letter-spacing: -0.05em; font-weight: 900; color: #0f172a;'>IEP Minute Pro</h1>", unsafe_allow_html=True)
+    tab_dash, tab_log, tab_add = st.tabs(["Dashboard", "Log Session", "Add Student"])
+
+    with tab_dash:
+        # Month/Week Selectors (Cleaned)
+        today = date.today()
+        sy = school_year_for(today)
+        month_tabs = [(sy if m>=8 else sy+1, m, lbl) for m,lbl in SCHOOL_MONTHS]
+        if "ami" not in st.session_state: st.session_state.ami = next((i for i,(y,m,_) in enumerate(month_tabs) if y==today.year and m==today.month), 0)
+        
+        m_cols = st.columns(len(month_tabs))
+        for mi, (yr, mo, lbl) in enumerate(month_tabs):
+            if m_cols[mi].button(lbl, key=f"m_{mi}", use_container_width=True, type="primary" if st.session_state.ami == mi else "secondary"):
+                st.session_state.ami = mi
+                st.rerun()
+
+        yr, mo, _ = month_tabs[st.session_state.ami]
+        m_start, m_end = month_range(yr, mo)
+        weeks = month_weeks(yr, mo)
+        w_opts = ["Whole Month"] + [w[0] for w in weeks]
+        wk_key = f"wk_{yr}_{mo}"
+        if wk_key not in st.session_state: st.session_state[wk_key] = "Whole Month"
+        
+        w_cols = st.columns(len(w_opts))
+        for wi, wopt in enumerate(w_opts):
+            if w_cols[wi].button(wopt, key=f"w_{yr}_{mo}_{wi}", use_container_width=True, type="primary" if st.session_state[wk_key] == wopt else "secondary"):
+                st.session_state[wk_key] = wopt
+                st.rerun()
+
+        sel_w = st.session_state[wk_key]
+        v_start, v_end = (m_start, m_end) if sel_w == "Whole Month" else next(((w[1], w[2]) for w in weeks if w[0]==sel_w), (m_start, m_end))
+
+        st.divider()
+        c1, c2 = st.columns([1, 3])
+        with c1:
+            active_subj = st.radio("Subject", SUBJECTS)
+            grade_filter = st.radio("Grade", ["All"] + GRADES, horizontal=True)
+        with c2:
+            vis = students_df if grade_filter == "All" else students_df[students_df["grade"] == grade_filter]
+            if vis.empty: st.info("No students.")
+            else:
+                for _, s in vis.iterrows(): render_student_card(s, logs_df, staff_df, active_subj, v_start, v_end, db)
+
+    with tab_log:
+        st.markdown("### Bulk Log Session")
+        with st.form("bulk_log", clear_on_submit=True):
             c1, c2 = st.columns(2)
             with c1:
-                sel_student = st.selectbox("Student", students_df["name"].tolist() if not students_df.empty else ["No Students"])
-                sel_subject = st.selectbox("Subject", SUBJECTS)
+                l_grade = st.selectbox("Grade Level", GRADES)
+                l_subj = st.selectbox("Subject", SUBJECTS)
             with c2:
-                sel_staff = st.selectbox("Staff Member", staff_df["name"].tolist() if not staff_df.empty else ["No Staff"])
-                sel_mins = st.number_input("Minutes", min_value=1, value=30)
+                l_staff = st.selectbox("Staff", staff_df["name"].tolist())
+                l_mins = st.number_input("Minutes", min_value=1, value=30)
+            l_date = st.date_input("Date", value=date.today())
             
-            sel_date = st.date_input("Date", value=date.today())
-            sel_note = st.text_area("Session Notes", placeholder="What did you work on today?")
+            st.markdown("**Select Students**")
+            grade_students = students_df[students_df["grade"] == l_grade]
+            selected_ids = []
+            if not grade_students.empty:
+                sc1, sc2 = st.columns(2)
+                for i, (_, s) in enumerate(grade_students.iterrows()):
+                    with (sc1 if i % 2 == 0 else sc2):
+                        if st.checkbox(s["name"], key=f"bulk_{s['id']}"): selected_ids.append(s["id"])
             
-            submit = st.form_submit_button("Save Log Entry", use_container_width=True)
-            
-            if submit:
-                if not students_df.empty:
-                    sid = students_df[students_df["name"] == sel_student]["id"].values[0]
-                    db.add_log(sid, sel_subject, sel_staff, sel_mins, sel_date, sel_note)
-                    st.success(f"Logged {sel_mins}m for {sel_student}!")
+            l_note = st.text_area("Notes")
+            if st.form_submit_button(f"Log {len(selected_ids)} Students", use_container_width=True):
+                if not selected_ids: st.error("Select at least one student.")
+                else:
+                    for sid in selected_ids: db.add_log(sid, l_subj, l_staff, l_mins, l_date, l_note)
+                    st.success("Logged successfully!")
                     st.rerun()
 
-    with tabs[2]:
-        st.info("Add student functionality would go here, styled similarly to the log form.")
-
-    with tabs[3]:
-        st.info("Settings and staff management.")
+    with tab_add:
+        st.markdown("### Add New Student")
+        with st.form("add_stu", clear_on_submit=True):
+            n_name = st.text_input("Student Name")
+            n_grade = st.selectbox("Grade", GRADES)
+            st.markdown("**Weekly Goals (Minutes)**")
+            gc1, gc2, gc3 = st.columns(3)
+            g_math = gc1.number_input("Math", value=60)
+            g_eng = gc2.number_input("English", value=90)
+            g_task = gc3.number_input("Tasks", value=45)
+            if st.form_submit_button("Add Student"):
+                if not n_name: st.error("Name required.")
+                else:
+                    db.add_student(n_name, n_grade, {"Math": g_math, "English": g_eng, "Task Completion": g_task})
+                    st.success(f"Added {n_name}!")
+                    st.rerun()
 
 if __name__ == "__main__":
     main()
