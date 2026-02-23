@@ -1,3 +1,8 @@
+"""
+IEP Minute Pro — Streamlit App
+Full Logic Restored | Fixed Session State Error | Refined UI Hierarchy
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -26,6 +31,21 @@ DEFAULT_STAFF = [
     {"id":4,"name":"Mr. Davis",   "color":"#ef4444"},
     {"id":5,"name":"Ms. Patel",   "color":"#ec4899"},
 ]
+
+# ── CALLBACKS (Fixes the Session State Error) ──────────────────────────────────
+def cb_select_all(ids):
+    for sid in ids:
+        st.session_state[f"ls_stu_{sid}"] = True
+
+def cb_select_none(ids):
+    for sid in ids:
+        st.session_state[f"ls_stu_{sid}"] = False
+
+def cb_clear_log_selection(ids):
+    for sid in ids:
+        st.session_state[f"ls_stu_{sid}"] = False
+    # Clear other form fields if needed
+    st.session_state["ls_note"] = ""
 
 # ── DB ────────────────────────────────────────────────────────────────────────
 class SheetsDB:
@@ -519,15 +539,13 @@ def render_log_session(db, students_df, staff_df, logs_df):
             if gs.empty:
                 st.warning("No students in " + grade_sel + " yet.")
             else:
+                stu_ids = gs["id"].tolist()
                 sa, sn = st.columns(2)
                 with sa:
-                    if st.button("Select All", key="ls_all"):
-                        for _, s in gs.iterrows():
-                            st.session_state["ls_stu_" + str(s["id"])] = True
+                    st.button("Select All", key="ls_all", on_click=cb_select_all, args=(stu_ids,))
                 with sn:
-                    if st.button("Select None", key="ls_none"):
-                        for _, s in gs.iterrows():
-                            st.session_state["ls_stu_" + str(s["id"])] = False
+                    st.button("Select None", key="ls_none", on_click=cb_select_none, args=(stu_ids,))
+                
                 for _, stu in gs.iterrows():
                     if st.checkbox(stu["name"], key="ls_stu_" + str(stu["id"])):
                         selected_ids.append(stu["id"])
@@ -552,6 +570,7 @@ def render_log_session(db, students_df, staff_df, logs_df):
                     "Logged " + str(int(mins_val)) + "m of " + subj_sel +
                     " for: " + ", ".join(names))
                 st.session_state["log_success_clear"] = False
+                # Clear selection using callback-like logic before refresh
                 for sid in selected_ids:
                     st.session_state["ls_stu_" + str(sid)] = False
                 refresh()
@@ -636,7 +655,6 @@ def main():
                 (i for i,(yr,m,_) in enumerate(month_tabs)
                  if yr==today.year and m==today.month), 0)
 
-        # Month selector (Decluttered: removed redundant label)
         m_cols = st.columns(len(month_tabs))
         for mi, (yr, mo, lbl) in enumerate(month_tabs):
             with m_cols[mi]:
@@ -657,7 +675,6 @@ def main():
         if sel_week_key not in st.session_state:
             st.session_state[sel_week_key] = "Whole Month"
 
-        # Week selector (Decluttered: removed redundant label)
         pill_cols = st.columns(len(week_options))
         for wi, wopt in enumerate(week_options):
             with pill_cols[wi]:
